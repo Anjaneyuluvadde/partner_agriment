@@ -508,7 +508,8 @@ export default function AgreementPage() {
               canvasProps={{
                 style: {
                   width: '100%',
-                  height: '150px'
+                  height: '150px',
+                  touchAction: 'none'
                 }
               }}
             />
