@@ -506,8 +506,6 @@ export default function AgreementPage() {
               ref={sigCanvas}
               penColor="black"
               canvasProps={{
-                width: 500,
-                height: 150,
                 style: {
                   width: '100%',
                   height: '150px'
