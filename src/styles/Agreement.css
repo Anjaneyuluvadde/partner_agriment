@@ -1,0 +1,386 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: #f5f7fa;
+  font-family: 'Segoe UI', 'Roboto', system-ui, sans-serif;
+  padding: 2rem 1rem;
+  display: flex;
+  justify-content: center;
+}
+
+.agreement-wrapper {
+  max-width: 1100px;
+  width: 100%;
+  background: #ffffff;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+  border-radius: 24px;
+  padding: 2.5rem 2.8rem;
+}
+
+@media (max-width: 700px) {
+  .agreement-wrapper {
+    padding: 1.5rem 1.2rem;
+  }
+}
+
+/* header / logo placeholder */
+.logo-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.2rem;
+}
+
+.logo-placeholder {
+  background: #0b2b3b;
+  color: white;
+  font-weight: 600;
+  font-size: 1.1rem;
+  padding: 0.4rem 1.2rem;
+  border-radius: 40px;
+  letter-spacing: 0.3px;
+  display: inline-block;
+}
+
+.logo-placeholder small {
+  font-weight: 300;
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.header-title {
+  font-size: 1.9rem;
+  font-weight: 600;
+  color: #0b2b3b;
+  letter-spacing: -0.3px;
+}
+
+.subhead {
+  color: #2b4b5b;
+  font-weight: 400;
+  font-size: 1rem;
+  margin-top: 0.1rem;
+  border-bottom: 2px solid #e6edf2;
+  padding-bottom: 1rem;
+}
+
+/* address block */
+.address-block {
+  background: #f0f4f8;
+  padding: 0.9rem 1.5rem;
+  border-radius: 16px;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin: 1.2rem 0 1.8rem 0;
+  color: #1a2e3b;
+  border-left: 4px solid #2f7a8c;
+}
+
+.party-section {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+  background: #fafcfd;
+  padding: 1.2rem 1.5rem;
+  border-radius: 18px;
+  margin: 1.4rem 0;
+  border: 1px solid #e2e9ef;
+}
+
+.party-box {
+  flex: 1 1 180px;
+}
+
+.party-box strong {
+  display: block;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #4f6f7e;
+  margin-bottom: 0.2rem;
+}
+
+.party-box .name {
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: #0f2c3b;
+}
+
+.dotted-field {
+  border-bottom: 1.5px dashed #a0bccd;
+  min-width: 140px;
+  display: inline-block;
+  padding: 0 0.2rem;
+  color: #1b3f51;
+  font-weight: 500;
+}
+
+.field-line {
+  margin: 0.3rem 0;
+}
+
+h2,
+h3 {
+  color: #0b2b3b;
+  margin: 1.8rem 0 0.6rem 0;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+}
+
+h2 {
+  font-size: 1.6rem;
+  border-bottom: 2px solid #dce6ed;
+  padding-bottom: 0.25rem;
+}
+
+h3 {
+  font-size: 1.2rem;
+  margin-top: 1.8rem;
+}
+
+h4 {
+  font-size: 1.05rem;
+  margin: 1.2rem 0 0.2rem;
+  color: #1d4052;
+}
+
+p,
+li {
+  line-height: 1.6;
+  color: #1e3848;
+  margin-bottom: 0.5rem;
+}
+
+.clause {
+  margin-left: 0.2rem;
+  padding-left: 0.6rem;
+  border-left: 2px solid #b8d0dd;
+  padding-top: 0.1rem;
+  padding-bottom: 0.2rem;
+}
+
+/* tables */
+.table-wrap {
+  overflow-x: auto;
+  margin: 1.2rem 0 1.8rem 0;
+  border-radius: 14px;
+  border: 1px solid #dde6ed;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+  background: white;
+}
+
+th {
+  background: #eef3f7;
+  color: #12303e;
+  font-weight: 600;
+  text-align: left;
+  padding: 0.8rem 0.8rem;
+  border-bottom: 1px solid #cbd8e2;
+}
+
+td {
+  padding: 0.7rem 0.8rem;
+  border-bottom: 1px solid #e3ecf2;
+  vertical-align: top;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+.table-caption {
+  font-size: 0.9rem;
+  background: #f7fafc;
+  padding: 0.5rem 1rem;
+  border-top: 1px solid #dde6ed;
+}
+
+.annex-box {
+  background: #fafdff;
+  border: 1px solid #d7e2eb;
+  border-radius: 18px;
+  padding: 1.5rem 1.8rem;
+  margin: 2rem 0 1.2rem 0;
+}
+
+.annex-box h3 {
+  margin-top: 0.2rem;
+  border-bottom: none;
+  color: #004466;
+}
+
+.signature-block {
+  margin: 2.5rem 0 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem 4rem;
+  background: #f8fbfd;
+  padding: 1.5rem 2rem;
+  border-radius: 24px;
+}
+
+.signature-item {
+  flex: 1 1 200px;
+}
+
+.signature-item .label {
+  font-weight: 500;
+  color: #3b5a6b;
+  font-size: 0.85rem;
+  letter-spacing: 0.3px;
+}
+
+.signature-item .value {
+  font-weight: 500;
+  color: #0a2533;
+  border-bottom: 1px solid #bccfd9;
+  padding: 0.2rem 0;
+  margin-top: 0.25rem;
+}
+
+.stamp-placeholder {
+  border: 2px dashed #6a8b9c;
+  border-radius: 12px;
+  padding: 0.6rem 1.8rem;
+  display: inline-block;
+  color: #1e4b5e;
+  font-weight: 400;
+  background: #e9f0f5;
+  margin-top: 0.3rem;
+}
+
+.otp-note {
+  background: #e7f0f7;
+  padding: 0.8rem 1.4rem;
+  border-radius: 40px;
+  display: inline-block;
+  font-weight: 500;
+  color: #003153;
+}
+
+hr {
+  margin: 2rem 0 1rem;
+  border: 0;
+  border-top: 2px solid #d0dee8;
+}
+
+.end-mark {
+  text-align: right;
+  font-weight: 300;
+  color: #3b6177;
+  margin-top: 1.2rem;
+}
+
+.inline-code {
+  background: #eef3f7;
+  padding: 0.1rem 0.5rem;
+  border-radius: 20px;
+  font-family: monospace;
+  font-size: 0.9rem;
+}
+
+.small-meta {
+  color: #3a6075;
+  font-size: 0.9rem;
+}
+
+ul,
+ol {
+  padding-left: 1.4rem;
+  margin: 0.2rem 0 0.7rem 0;
+}
+
+.list-alpha {
+  list-style-type: lower-alpha;
+}
+
+/* signature module styles */
+.signature-module {
+  margin-top: 1.5rem;
+  background: #fff;
+  border: 1px solid #d7e2eb;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+}
+
+.signature-module h4 {
+  margin-top: 0;
+}
+
+.signature-box {
+  border: 2px dashed #999;
+  border-radius: 10px;
+  background: #fafafa;
+  margin: 1rem 0;
+  overflow: hidden;
+  width: 100%;
+  max-width: 500px;
+}
+
+.signature-box canvas {
+  display: block;
+  width: 100%;
+  cursor: crosshair;
+  touch-action: none;
+  /* Prevent scrolling on touch devices while signing */
+}
+
+.signature-buttons {
+  display: flex;
+  gap: 1rem;
+}
+
+.btn {
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.btn-clear {
+  background: #ef4444;
+  color: #fff;
+}
+
+.btn-save {
+  background: #16a34a;
+  color: #fff;
+}
+
+.signature-preview-container {
+  margin-top: 1.5rem;
+}
+
+.signature-preview {
+  border: 1px solid #ddd;
+  background: #fff;
+  border-radius: 8px;
+  max-width: 100%;
+}
+
+/* Styling for PDF download mode */
+.pdf-mode input.dotted-field {
+  border: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  min-width: 0 !important;
+  width: auto !important;
+  color: #0b2b3b !important;
+}
+
+.pdf-mode input[type="date"]::-webkit-calendar-picker-indicator {
+  display: none !important;
+}
