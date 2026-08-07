@@ -418,6 +418,329 @@ export default function AgreementPage() {
     }
   };
 
+  const generatePdfFromWord = async () => {
+    const element = componentRef.current;
+    if (!element) return;
+
+    // Use pt as standard since a4 is 595.28 x 841.89 pt
+    const pdf = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'portrait' });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 50; 
+    const contentWidth = pageWidth - margin * 2;
+    let cursorY = margin;
+
+    const addPage = () => {
+      pdf.addPage();
+      cursorY = margin;
+    };
+
+    const checkPageBreak = (neededHeight) => {
+      if (cursorY + neededHeight > pageHeight - margin) {
+        addPage();
+        return true;
+      }
+      return false;
+    };
+
+    const parseRunsForPdf = (node, currentFormat = {}) => {
+      let runs = [];
+      if (node.nodeType === Node.TEXT_NODE) {
+        const text = node.textContent.replace(/[\n\r]+/g, ' ').replace(/\s+/g, ' ');
+        if (text !== '') {
+          runs.push({ text, bold: currentFormat.bold, italics: currentFormat.italics, size: currentFormat.size || 11, color: currentFormat.color || "#333333" });
+        }
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        if (node.nodeName === 'BR') {
+           runs.push({ break: true });
+        }
+        
+        let format = { ...currentFormat };
+        if (node.nodeName === 'STRONG' || node.nodeName === 'B') {
+          format.bold = true;
+          const parent = node.parentNode;
+          const isFirstChild = parent && parent.firstElementChild === node;
+          const isSubHeading = isFirstChild && (
+            parent.classList.contains('clause') || 
+            parent.classList.contains('address-block') || 
+            parent.classList.contains('party-box') || 
+            (parent.nodeName === 'P' && parent.parentNode && parent.parentNode.classList.contains('info-card')) ||
+            (parent.nodeName === 'P' && node.textContent.trim().toUpperCase().includes('PARTNER ACCEPTANCE'))
+          );
+          if (isSubHeading) {
+             format.size = 14; 
+             format.color = "#0B2B3B";
+          }
+        }
+        if (node.nodeName === 'EM' || node.nodeName === 'I') format.italics = true;
+        
+        if (node.nodeName === 'INPUT') {
+          let text = '';
+          if (node.type === 'checkbox' || node.type === 'radio') {
+            text = node.checked ? '[X]' : '[ ]';
+          } else {
+            text = node.value || ' ';
+            if (node.value) { format.bold = true; }
+          }
+          runs.push({ text, bold: format.bold, italics: format.italics, size: format.size || 11, color: format.color || "#333333" });
+        } else if (node.nodeName === 'SELECT') {
+          const selectedOption = node.options[node.selectedIndex];
+          const text = selectedOption ? selectedOption.text : ' ';
+          runs.push({ text, bold: format.bold, italics: format.italics, size: format.size || 11, color: format.color || "#333333" });
+        } else {
+           node.childNodes.forEach(child => {
+             runs.push(...parseRunsForPdf(child, format));
+           });
+        }
+      }
+      return runs;
+    };
+
+    const renderParagraph = (runs, align = 'left', bullet = false, extraIndent = 0) => {
+      let currentX = margin + extraIndent;
+      if (bullet) {
+         pdf.setFont('helvetica', 'normal');
+         pdf.setFontSize(11);
+         pdf.setTextColor('#333333');
+         pdf.text('•', currentX, cursorY + 11);
+         currentX += 15;
+      }
+
+      let lineMaxHeight = 11;
+      let words = [];
+      
+      for (const run of runs) {
+          if (run.break) {
+             words.push({ break: true });
+             continue;
+          }
+          const runWords = run.text.split(/(\s+)/);
+          for (const w of runWords) {
+              if (w.length > 0) {
+                 words.push({ text: w, bold: run.bold, italics: run.italics, size: run.size, color: run.color });
+              }
+          }
+      }
+
+      let lineWords = [];
+      let currentLineWidth = 0;
+
+      const flushLine = (forceBreak = false) => {
+          if (lineWords.length === 0 && !forceBreak) return;
+          checkPageBreak(lineMaxHeight * 1.5);
+          
+          let x = currentX;
+          if (align === 'center') {
+              x = margin + extraIndent + (contentWidth - extraIndent - currentLineWidth) / 2;
+          } else if (align === 'right') {
+              x = margin + contentWidth - currentLineWidth;
+          }
+          
+          for (const lw of lineWords) {
+              pdf.setFont('helvetica', lw.bold ? (lw.italics ? 'bolditalic' : 'bold') : (lw.italics ? 'italic' : 'normal'));
+              pdf.setFontSize(lw.size);
+              pdf.setTextColor(lw.color);
+              pdf.text(lw.text, x, cursorY + lineMaxHeight);
+              x += pdf.getTextWidth(lw.text);
+          }
+          
+          cursorY += lineMaxHeight * 1.5; 
+          lineWords = [];
+          currentLineWidth = 0;
+          lineMaxHeight = 11;
+          currentX = bullet ? margin + extraIndent + 15 : margin + extraIndent;
+      };
+
+      for (const word of words) {
+          if (word.break) {
+              flushLine(true);
+              continue;
+          }
+          pdf.setFont('helvetica', word.bold ? (word.italics ? 'bolditalic' : 'bold') : (word.italics ? 'italic' : 'normal'));
+          pdf.setFontSize(word.size);
+          const wWidth = pdf.getTextWidth(word.text);
+          const wHeight = word.size;
+          
+          if (currentX + currentLineWidth + wWidth > margin + contentWidth) {
+              if (word.text.trim() === '') continue; 
+              flushLine();
+          }
+          
+          lineWords.push(word);
+          currentLineWidth += wWidth;
+          if (wHeight > lineMaxHeight) lineMaxHeight = wHeight;
+      }
+      flushLine();
+      cursorY += 5; 
+    };
+
+    const parseBlocksForPdf = (node) => {
+      if (node.nodeType !== Node.ELEMENT_NODE) return;
+      if (node.getAttribute('data-html2canvas-ignore') === 'true') return;
+      const style = window.getComputedStyle(node);
+      if (style.display === 'none') return;
+
+      const nodeName = node.nodeName;
+
+      if (node.classList.contains('logo-header')) {
+        renderParagraph([{ text: "THE NEATIFY TEAM OPC", bold: true, size: 20, color: "#0B2B3B" }], 'center');
+        renderParagraph([{ text: "SERVICE PARTNER AGREEMENT", bold: true, size: 14, color: "#3a6177" }], 'center');
+        cursorY += 20;
+        return;
+      }
+
+      if (node.classList.contains('signature-grid')) {
+         node.querySelectorAll('.signature-box').forEach(box => {
+            parseBlocksForPdf(box);
+         });
+         return;
+      }
+
+      if (node.classList.contains('info-card')) {
+        cursorY += 10;
+        checkPageBreak(80); 
+        
+        const startY = cursorY;
+        pdf.setFillColor(248, 249, 250);
+        pdf.setDrawColor(233, 236, 239);
+        
+        // Estimate height and draw a generic box (since we can't easily measure full height in advance)
+        // Alternatively, we can just draw a line on the left to denote a card. 
+        // For full fidelity, we'll draw a rect over a rough estimated height (80pt).
+        pdf.rect(margin, cursorY, contentWidth, 90, 'FD');
+        cursorY += 15;
+        node.childNodes.forEach(child => {
+            if (child.nodeName === 'P') {
+                 const runs = parseRunsForPdf(child, { size: 11, color: "#333333" });
+                 renderParagraph(runs, 'left', false, 15);
+            }
+        });
+        cursorY = startY + 100; // Force step out of box
+        return;
+      }
+
+      if (['H2', 'H3', 'H4', 'H5'].includes(nodeName)) {
+        cursorY += 15;
+        checkPageBreak(30);
+        const runs = parseRunsForPdf(node, { size: 14, color: "#0B2B3B", bold: true });
+        renderParagraph(runs, 'left');
+        cursorY += 5;
+        return;
+      }
+
+      const isBlock = nodeName === 'P' || nodeName === 'LI' || 
+                      node.classList.contains('clause') || 
+                      node.classList.contains('party-box') || 
+                      node.classList.contains('address-block');
+
+      if (isBlock) {
+        const runs = parseRunsForPdf(node, { size: 11, color: "#333333" });
+        const bullet = nodeName === 'LI';
+        const align = (nodeName === 'P' && node.style.textAlign === 'center') ? 'center' : (node.style.textAlign === 'right' ? 'right' : 'left');
+        renderParagraph(runs, align, bullet);
+        return;
+      }
+
+      if (nodeName === 'TABLE') {
+         cursorY += 10;
+         const rows = Array.from(node.querySelectorAll('tr'));
+         const cols = rows[0] ? Array.from(rows[0].querySelectorAll('th, td')).length : 1;
+         const colWidth = contentWidth / cols;
+         
+         for (const tr of rows) {
+             const cells = Array.from(tr.querySelectorAll('th, td'));
+             let maxCellHeight = 0;
+             
+             // Pre-measure height
+             for (const td of cells) {
+                  const runs = parseRunsForPdf(td, { size: 10, bold: td.nodeName === 'TH', color: "#333333" });
+                  let textLen = runs.map(r => r.text).join('').length;
+                  let charsPerLine = Math.floor(colWidth / 6);
+                  let lines = Math.ceil(textLen / (charsPerLine || 1));
+                  if (lines < 1) lines = 1;
+                  let h = lines * 15 + 10;
+                  if (h > maxCellHeight) maxCellHeight = h;
+             }
+             
+             checkPageBreak(maxCellHeight);
+             
+             let currentX = margin;
+             for (let i = 0; i < cells.length; i++) {
+                 const td = cells[i];
+                 const isTh = td.nodeName === 'TH';
+                 
+                 if (isTh) {
+                    pdf.setFillColor(245, 245, 245);
+                    pdf.rect(currentX, cursorY, colWidth, maxCellHeight, 'F');
+                 }
+                 pdf.setDrawColor(204, 204, 204);
+                 pdf.rect(currentX, cursorY, colWidth, maxCellHeight, 'S');
+                 
+                 const runs = parseRunsForPdf(td, { size: 10, bold: isTh, color: "#333333" });
+                 let textX = currentX + 5;
+                 let textY = cursorY + 5;
+                 
+                 pdf.setFont('helvetica', isTh ? 'bold' : 'normal');
+                 pdf.setFontSize(10);
+                 pdf.setTextColor('#333333');
+                 
+                 const text = runs.map(r => r.text).join('');
+                 const wrapped = pdf.splitTextToSize(text, colWidth - 10);
+                 pdf.text(wrapped, textX, textY + 10);
+                 
+                 currentX += colWidth;
+             }
+             cursorY += maxCellHeight;
+         }
+         cursorY += 15;
+         return;
+      }
+
+      if (nodeName === 'IMG') {
+        const src = node.getAttribute('src');
+        if (src && src.startsWith('data:image')) {
+          const width = parseInt(node.width || node.getAttribute('width') || 200, 10);
+          const height = parseInt(node.height || node.getAttribute('height') || 100, 10);
+          checkPageBreak(height + 20);
+          try {
+             pdf.addImage(src, 'PNG', margin, cursorY, width, height);
+             cursorY += height + 15;
+          } catch(e) { console.error("Error drawing image in pdf", e); }
+        }
+        return;
+      }
+      
+      if (nodeName === 'TEXTAREA') {
+         renderParagraph([{ text: node.value || ' ', size: 11, color: "#333333" }]);
+         return;
+      }
+      
+      if (nodeName === 'HR') {
+         cursorY += 10;
+         checkPageBreak(10);
+         pdf.setDrawColor(204, 204, 204);
+         pdf.setLineWidth(1);
+         pdf.line(margin, cursorY, margin + contentWidth, cursorY);
+         cursorY += 15;
+         return;
+      }
+
+      node.childNodes.forEach(child => {
+         parseBlocksForPdf(child);
+      });
+    };
+
+    try {
+      element.childNodes.forEach(child => {
+         parseBlocksForPdf(child);
+      });
+      pdf.save('Service_Partner_Agreement.pdf');
+    } catch (error) {
+      console.error("Native PDF Generation Error:", error);
+      alert("An error occurred while generating the native PDF.");
+    }
+  };
+
   const clearSignature = () => {
     sigCanvas.current.clear();
     setSignature("");
@@ -910,10 +1233,17 @@ export default function AgreementPage() {
       <div style={{ textAlign: 'center', marginTop: '2rem', marginBottom: '2rem', display: 'flex', justifyContent: 'center', gap: '1rem' }}>
         <button
           type="button"
-          onClick={handleDownloadPdf}
+          onClick={generatePdfFromWord}
           style={{ padding: '14px 28px', background: '#0b2b3b', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: '1.1rem', fontWeight: 600, boxShadow: '0 4px 12px rgba(11, 43, 59, 0.2)' }}
         >
-          Download PDF
+          Download Native PDF
+        </button>
+        <button
+          type="button"
+          onClick={handleDownloadPdf}
+          style={{ padding: '14px 28px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: '1.1rem', fontWeight: 600, boxShadow: '0 4px 12px rgba(59, 130, 246, 0.2)' }}
+        >
+          Download Image PDF
         </button>
         <button
           type="button"
