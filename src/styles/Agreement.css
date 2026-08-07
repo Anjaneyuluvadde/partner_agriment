@@ -381,20 +381,110 @@ ol {
   color: #0b2b3b !important;
 }
 
+.pdf-mode h2,
+.pdf-mode h3,
+.pdf-mode h4 {
+  page-break-after: avoid;
+  break-after: avoid;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+/* Fix html2pdf page break margin collapse clipping */
+.html2pdf__page-break {
+  background-color: transparent !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.html2pdf__page-break::before,
+.html2pdf__page-break::after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
 .pdf-mode input[type="date"]::-webkit-calendar-picker-indicator {
   display: none !important;
 }
+
+/* FIX: Force exact A4 printable width at 96 DPI to sync html2canvas slicing with html2pdf pagebreak math */
+.agreement-wrapper.pdf-mode {
+  width: 718px !important;
+  max-width: 718px !important;
+  padding: 1.5rem 2rem !important;
+  box-shadow: none !important;
+}
+
+/* FIX: html2pdf pagebreak module cannot measure flex containers. Convert to floats. */
+.agreement-wrapper.pdf-mode .party-section,
+.agreement-wrapper.pdf-mode .signature-block {
+  display: block !important;
+}
+.agreement-wrapper.pdf-mode .party-section::after,
+.agreement-wrapper.pdf-mode .signature-block::after {
+  content: "";
+  display: table;
+  clear: both;
+}
+.agreement-wrapper.pdf-mode .party-box {
+  float: left;
+  width: 48%;
+}
+.agreement-wrapper.pdf-mode .signature-item {
+  float: left;
+  width: 31%;
+  margin-right: 2%;
+}
+
 /* Responsive Mobile Adjustments */
 @media (max-width: 768px) {
-  .header-title { font-size: 1.4rem; }
-  h2 { font-size: 1.3rem; }
-  h3 { font-size: 1.1rem; }
-  .party-section { flex-direction: column; gap: 1rem; }
-  .signature-block { flex-direction: column; gap: 1.5rem; }
-  .signature-box { max-width: 100%; width: 100%; }
-  .agreement-wrapper { padding: 1.2rem 1rem; margin: 0; border-radius: 0; box-shadow: none; }
-  .logo-placeholder { font-size: 0.95rem; }
-  body { padding: 0; }
-  .signature-buttons { flex-direction: column; }
-  .signature-buttons button { width: 100%; }
+  .header-title {
+    font-size: 1.4rem;
+  }
+
+  h2 {
+    font-size: 1.3rem;
+  }
+
+  h3 {
+    font-size: 1.1rem;
+  }
+
+  .party-section {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .signature-block {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .signature-box {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .agreement-wrapper {
+    padding: 1.2rem 1rem;
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .logo-placeholder {
+    font-size: 0.95rem;
+  }
+
+  body {
+    padding: 0;
+  }
+
+  .signature-buttons {
+    flex-direction: column;
+  }
+
+  .signature-buttons button {
+    width: 100%;
+  }
 }
