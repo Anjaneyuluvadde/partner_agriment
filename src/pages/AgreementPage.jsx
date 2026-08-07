@@ -2,6 +2,8 @@ import React, { useRef, useState } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
+import { asBlob } from 'html-docx-js-typescript';
+import { saveAs } from 'file-saver';
 import '../styles/Agreement.css';
 
 export default function AgreementPage() {
@@ -11,7 +13,7 @@ export default function AgreementPage() {
 
   const handleDownloadPdf = async () => {
     const element = componentRef.current;
-    
+
     element.classList.add('pdf-mode');
 
     const inputs = element.querySelectorAll('input.dotted-field');
@@ -75,7 +77,7 @@ export default function AgreementPage() {
       const margin = 10;
       const printableWidth = pageWidth - margin * 2;
       const printableHeight = pageHeight - margin * 2;
-      
+
       const pxPerMM = element.offsetWidth / printableWidth;
       const MAX_PAGE_HEIGHT_PX = printableHeight * pxPerMM;
 
@@ -100,7 +102,7 @@ export default function AgreementPage() {
 
       for (let i = 0; i < elementMetrics.length; i++) {
         const metric = elementMetrics[i];
-        
+
         let effectiveBottom = metric.bottom;
         if (['H2', 'H3', 'H4', 'H5'].includes(metric.tagName) && i + 1 < elementMetrics.length) {
           effectiveBottom = elementMetrics[i + 1].bottom;
@@ -118,6 +120,14 @@ export default function AgreementPage() {
         pages.push(currentPageAtomics);
       }
 
+      // 1. Determine the ROOT document width ONLY ONCE before pagination
+      const rootWidth = element.getBoundingClientRect().width;
+
+      // 2. Enforce this SAME width structurally for EVERY page
+      element.style.width = `${rootWidth}px`;
+      element.style.maxWidth = `${rootWidth}px`;
+      element.style.minWidth = `${rootWidth}px`;
+
       for (let i = 0; i < pages.length; i++) {
         const pageAtomics = pages[i];
 
@@ -125,7 +135,7 @@ export default function AgreementPage() {
         pageAtomics.forEach(el => el.style.display = el.dataset.origDisplay);
 
         parents.forEach(parent => {
-          const hasVisibleAtomic = atomics.some(child => 
+          const hasVisibleAtomic = atomics.some(child =>
             parent.contains(child) && child.style.display !== 'none'
           );
           parent.style.display = hasVisibleAtomic ? parent.dataset.origDisplay : 'none';
@@ -133,20 +143,28 @@ export default function AgreementPage() {
 
         await new Promise(resolve => setTimeout(resolve, 50));
 
-        const canvas = await html2canvas(element, { scale: 2, useCORS: true, logging: false, scrollY: 0 });
+        // 3. Force html2canvas to capture exactly the root width, preventing individual block shrinking
+        const canvas = await html2canvas(element, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          scrollY: 0,
+          width: rootWidth,
+          windowWidth: document.documentElement.offsetWidth
+        });
         const imgData = canvas.toDataURL('image/jpeg', 0.98);
-        
+
         if (i > 0) pdf.addPage();
-        
+
         let finalWidth = printableWidth;
         let finalHeight = (canvas.height * finalWidth) / canvas.width;
-        
+
         if (finalHeight > printableHeight) {
-           const scale = printableHeight / finalHeight;
-           finalWidth = finalWidth * scale;
-           finalHeight = printableHeight;
+          const scale = printableHeight / finalHeight;
+          finalWidth = finalWidth * scale;
+          finalHeight = printableHeight;
         }
-        
+
         pdf.addImage(imgData, 'JPEG', margin, margin, finalWidth, finalHeight);
       }
 
@@ -157,21 +175,199 @@ export default function AgreementPage() {
       alert("An error occurred while generating the PDF.");
     } finally {
       element.classList.remove('pdf-mode');
-      
+      element.style.width = '';
+      element.style.maxWidth = '';
+      element.style.minWidth = '';
+
       allAtomics.forEach(el => {
         el.style.display = el.dataset.origDisplay;
         delete el.dataset.origDisplay;
       });
-      
+
       allParents.forEach(parent => {
         parent.style.display = parent.dataset.origDisplay;
         delete parent.dataset.origDisplay;
       });
-      
+
       spans.forEach(({ input, span }) => {
         input.style.display = '';
         span.remove();
       });
+    }
+  };
+
+  const handleDownloadWord = async () => {
+    const element = componentRef.current;
+
+    // Convert all form controls into plain text to prevent them from rendering as editable fields
+    const formControls = element.querySelectorAll('input, textarea, select');
+    const replacements = [];
+
+    formControls.forEach(control => {
+      let replacementNode;
+      if (control.tagName === 'TEXTAREA') {
+        replacementNode = document.createElement('p');
+        replacementNode.textContent = control.value || ' ';
+        replacementNode.style.cssText = `
+          color: #0b2b3b;
+          font-family: inherit;
+          font-size: inherit;
+          margin: 0;
+          white-space: pre-wrap;
+        `;
+      } else if (control.tagName === 'SELECT') {
+        replacementNode = document.createElement('span');
+        const selectedOption = control.options[control.selectedIndex];
+        replacementNode.textContent = selectedOption ? selectedOption.text : ' ';
+        replacementNode.style.cssText = `
+          color: #0b2b3b;
+          font-family: inherit;
+          font-size: inherit;
+        `;
+      } else {
+        replacementNode = document.createElement('span');
+        if (control.type === 'checkbox' || control.type === 'radio') {
+          replacementNode.textContent = control.checked ? '☑' : '☐';
+        } else {
+          replacementNode.textContent = control.value || ' ';
+        }
+
+        let cssText = `
+          display: inline-block;
+          color: #0b2b3b;
+          font-family: inherit;
+          font-size: inherit;
+        `;
+        if (control.classList.contains('dotted-field')) {
+          cssText += `
+            min-width: ${control.offsetWidth || 50}px;
+            padding: 0 4px;
+            border-bottom: 1px dotted #ccc;
+          `;
+        }
+        replacementNode.style.cssText = cssText;
+      }
+
+      // Preserve html2canvas-ignore attribute so subsequent logic can still target it
+      if (control.hasAttribute('data-html2canvas-ignore')) {
+        replacementNode.setAttribute('data-html2canvas-ignore', control.getAttribute('data-html2canvas-ignore'));
+      }
+
+      const parent = control.parentNode;
+      const nextSibling = control.nextSibling;
+      // Remove form control from DOM and replace with text node
+      parent.replaceChild(replacementNode, control);
+      replacements.push({ parent, control, replacementNode, nextSibling });
+    });
+
+    // Convert Header into proper block Titles to avoid layout and formatting issues in Word
+    const logoHeader = element.querySelector('.logo-header');
+    let originalLogoHeaderHtml = null;
+    if (logoHeader) {
+      originalLogoHeaderHtml = logoHeader.innerHTML;
+      logoHeader.innerHTML = `
+        <div style="font-size: 18pt; font-weight: bold; color: #0b2b3b; text-align: center; text-decoration: none; border: none; margin-bottom: 4pt;">THE NEATIFY TEAM OPC</div>
+        <div style="font-size: 18pt; font-weight: bold; color: #0b2b3b; text-align: center; text-decoration: none; border: none; margin-bottom: 12pt;">SERVICE PARTNER AGREEMENT</div>
+      `;
+    }
+
+    // Hide interactive elements and those explicitly ignored
+    const noDocxElements = element.querySelectorAll('[data-html2canvas-ignore="true"]');
+    const noDocxDisplayStyles = [];
+    noDocxElements.forEach(el => {
+      noDocxDisplayStyles.push({ el, display: el.style.display });
+      el.style.display = 'none';
+    });
+
+    // Convert headings to standard divs to completely bypass Word's native heading borders
+    const headingTags = element.querySelectorAll('h2, h3, h4, h5');
+    const headingTagRestorations = [];
+    headingTags.forEach(h => {
+      const replacement = document.createElement('div');
+      replacement.innerHTML = h.innerHTML;
+      replacement.style.cssText = "font-size: 18pt; font-weight: bold; color: #0b2b3b; text-align: left; text-decoration: none; border: none; margin-top: 14pt; margin-bottom: 10pt;";
+      h.parentNode.replaceChild(replacement, h);
+      headingTagRestorations.push({ parent: replacement.parentNode, original: h, replacement });
+    });
+
+    // Apply specific inline styles for Sub Headings
+    const styleRestorations = [];
+    
+    // Sub Headings inside text (e.g. 1.1, Partner Details, Company, etc)
+    const subHeadingElements = [
+      ...Array.from(element.querySelectorAll('.clause > strong:first-child')),
+      ...Array.from(element.querySelectorAll('.address-block strong:first-child')),
+      ...Array.from(element.querySelectorAll('.party-box strong:first-child')),
+      ...Array.from(element.querySelectorAll('.info-card p > strong:first-child')),
+      ...Array.from(element.querySelectorAll('p > strong:first-child')).filter(s => s.textContent.trim().toUpperCase().includes('PARTNER ACCEPTANCE'))
+    ].filter(Boolean);
+
+    subHeadingElements.forEach(strong => {
+      styleRestorations.push({ el: strong, style: strong.getAttribute('style') });
+      strong.style.cssText = "font-size: 18pt; font-weight: bold; color: #0b2b3b; text-decoration: none; border: none;";
+    });
+
+    try {
+      const htmlString = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <title>Service Partner Agreement</title>
+            <style>
+              body { font-family: sans-serif; font-size: 14px; line-height: 1.6; color: #333; }
+              table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+              th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+              th { background-color: #f5f5f5; font-weight: bold; }
+              .clause { margin-bottom: 0.6rem; text-align: justify; }
+            </style>
+          </head>
+          <body>
+            ${element.innerHTML}
+          </body>
+        </html>
+      `;
+
+      const blob = await asBlob(htmlString, {
+        orientation: 'portrait',
+        margins: { top: 1000, right: 1000, bottom: 1000, left: 1000 }
+      });
+
+      saveAs(blob, 'Service_Partner_Agreement.docx');
+
+    } catch (error) {
+      console.error("Word Generation Error:", error);
+      alert("An error occurred while generating the Word document.");
+    } finally {
+      // Restore the DOM completely
+      replacements.forEach(({ parent, control, replacementNode, nextSibling }) => {
+        if (parent.contains(replacementNode)) {
+          parent.replaceChild(control, replacementNode);
+        } else if (parent) {
+          parent.insertBefore(control, nextSibling);
+          if (replacementNode.parentNode) {
+            replacementNode.parentNode.removeChild(replacementNode);
+          }
+        }
+      });
+      headingTagRestorations.forEach(({ parent, original, replacement }) => {
+        if (parent.contains(replacement)) {
+          parent.replaceChild(original, replacement);
+        }
+      });
+      noDocxElements.forEach((el, idx) => {
+        el.style.display = noDocxDisplayStyles[idx].display;
+      });
+      styleRestorations.forEach(({ el, style }) => {
+        if (style === null) {
+          el.removeAttribute('style');
+        } else {
+          el.setAttribute('style', style);
+        }
+      });
+      if (logoHeader && originalLogoHeaderHtml !== null) {
+        logoHeader.innerHTML = originalLogoHeaderHtml;
+      }
     }
   };
 
@@ -664,13 +860,20 @@ export default function AgreementPage() {
         </div>
       </div>
 
-      <div style={{ textAlign: 'center', marginTop: '2rem', marginBottom: '2rem' }}>
+      <div style={{ textAlign: 'center', marginTop: '2rem', marginBottom: '2rem', display: 'flex', justifyContent: 'center', gap: '1rem' }}>
         <button
           type="button"
           onClick={handleDownloadPdf}
           style={{ padding: '14px 28px', background: '#0b2b3b', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: '1.1rem', fontWeight: 600, boxShadow: '0 4px 12px rgba(11, 43, 59, 0.2)' }}
         >
-          Download as PDF
+          Download PDF
+        </button>
+        <button
+          type="button"
+          onClick={handleDownloadWord}
+          style={{ padding: '14px 28px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: '1.1rem', fontWeight: 600, boxShadow: '0 4px 12px rgba(22, 163, 74, 0.2)' }}
+        >
+          Download Word Document
         </button>
       </div>
     </>
