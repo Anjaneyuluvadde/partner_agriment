@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
-import { asBlob } from 'html-docx-js-typescript';
+import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, AlignmentType, ImageRun, WidthType, BorderStyle, ShadingType } from 'docx';
 import { saveAs } from 'file-saver';
 import '../styles/Agreement.css';
 
@@ -199,175 +199,222 @@ export default function AgreementPage() {
   const handleDownloadWord = async () => {
     const element = componentRef.current;
 
-    // Convert all form controls into plain text to prevent them from rendering as editable fields
-    const formControls = element.querySelectorAll('input, textarea, select');
-    const replacements = [];
-
-    formControls.forEach(control => {
-      let replacementNode;
-      if (control.tagName === 'TEXTAREA') {
-        replacementNode = document.createElement('p');
-        replacementNode.textContent = control.value || ' ';
-        replacementNode.style.cssText = `
-          color: #0b2b3b;
-          font-family: inherit;
-          font-size: inherit;
-          margin: 0;
-          white-space: pre-wrap;
-        `;
-      } else if (control.tagName === 'SELECT') {
-        replacementNode = document.createElement('span');
-        const selectedOption = control.options[control.selectedIndex];
-        replacementNode.textContent = selectedOption ? selectedOption.text : ' ';
-        replacementNode.style.cssText = `
-          color: #0b2b3b;
-          font-family: inherit;
-          font-size: inherit;
-        `;
-      } else {
-        replacementNode = document.createElement('span');
-        if (control.type === 'checkbox' || control.type === 'radio') {
-          replacementNode.textContent = control.checked ? '☑' : '☐';
+    const parseRuns = (node, currentFormat = {}) => {
+      let runs = [];
+      if (node.nodeType === Node.TEXT_NODE) {
+        const text = node.textContent.replace(/[\n\r]+/g, ' ').replace(/\s+/g, ' ');
+        if (text !== '') {
+          runs.push(new TextRun({
+            text: text,
+            bold: currentFormat.bold,
+            italics: currentFormat.italics,
+            size: currentFormat.size || 28,
+            color: currentFormat.color || "333333"
+          }));
+        }
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        if (node.nodeName === 'BR') {
+           runs.push(new TextRun({ break: 1 }));
+        }
+        
+        let format = { ...currentFormat };
+        if (node.nodeName === 'STRONG' || node.nodeName === 'B') {
+          format.bold = true;
+          const parent = node.parentNode;
+          const isFirstChild = parent && parent.firstElementChild === node;
+          const isSubHeading = isFirstChild && (
+            parent.classList.contains('clause') || 
+            parent.classList.contains('address-block') || 
+            parent.classList.contains('party-box') || 
+            (parent.nodeName === 'P' && parent.parentNode && parent.parentNode.classList.contains('info-card')) ||
+            (parent.nodeName === 'P' && node.textContent.trim().toUpperCase().includes('PARTNER ACCEPTANCE'))
+          );
+          if (isSubHeading) {
+             format.size = 36; // 18pt
+             format.color = "0B2B3B";
+          }
+        }
+        if (node.nodeName === 'EM' || node.nodeName === 'I') format.italics = true;
+        
+        if (node.nodeName === 'INPUT') {
+          let text = '';
+          if (node.type === 'checkbox' || node.type === 'radio') {
+            text = node.checked ? '☑' : '☐';
+          } else {
+            text = node.value || ' ';
+          }
+          runs.push(new TextRun({ text, bold: format.bold, size: format.size, color: format.color }));
+        } else if (node.nodeName === 'SELECT') {
+          const selectedOption = node.options[node.selectedIndex];
+          const text = selectedOption ? selectedOption.text : ' ';
+          runs.push(new TextRun({ text, bold: format.bold, size: format.size, color: format.color }));
         } else {
-          replacementNode.textContent = control.value || ' ';
+           node.childNodes.forEach(child => {
+             runs.push(...parseRuns(child, format));
+           });
         }
+      }
+      return runs;
+    };
 
-        let cssText = `
-          display: inline-block;
-          color: #0b2b3b;
-          font-family: inherit;
-          font-size: inherit;
-        `;
-        if (control.classList.contains('dotted-field')) {
-          cssText += `
-            min-width: ${control.offsetWidth || 50}px;
-            padding: 0 4px;
-            border-bottom: 1px dotted #ccc;
-          `;
-        }
-        replacementNode.style.cssText = cssText;
+    const parseBlocks = (node) => {
+      let blocks = [];
+      if (node.nodeType !== Node.ELEMENT_NODE) return blocks;
+      
+      if (node.getAttribute('data-html2canvas-ignore') === 'true') return blocks;
+      const style = window.getComputedStyle(node);
+      if (style.display === 'none') return blocks;
+
+      const nodeName = node.nodeName;
+
+      if (node.classList.contains('logo-header')) {
+        blocks.push(new Paragraph({
+          children: [new TextRun({ text: "THE NEATIFY TEAM OPC", bold: true, size: 36, color: "0B2B3B" })],
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 120 }
+        }));
+        blocks.push(new Paragraph({
+          children: [new TextRun({ text: "SERVICE PARTNER AGREEMENT", bold: true, size: 36, color: "0B2B3B" })],
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 240 }
+        }));
+        return blocks;
+      }
+      
+      if (node.classList.contains('signature-grid')) {
+         const cells = [];
+         node.querySelectorAll('.signature-box').forEach(box => {
+           cells.push(new TableCell({
+             children: parseBlocks(box),
+             borders: { top: { style: BorderStyle.NIL, size: 0, color: "auto" }, bottom: { style: BorderStyle.NIL, size: 0, color: "auto" }, left: { style: BorderStyle.NIL, size: 0, color: "auto" }, right: { style: BorderStyle.NIL, size: 0, color: "auto" } },
+             width: { size: 50, type: WidthType.PERCENTAGE }
+           }));
+         });
+         blocks.push(new Table({ rows: [new TableRow({ children: cells })], width: { size: 100, type: WidthType.PERCENTAGE } }));
+         return blocks;
+      }
+      
+      if (node.classList.contains('info-card')) {
+        const infoBlocks = [];
+        node.childNodes.forEach(child => infoBlocks.push(...parseBlocks(child)));
+        blocks.push(new Table({
+           rows: [new TableRow({ children: [new TableCell({
+             children: infoBlocks,
+             shading: { fill: "F8F9FA", type: ShadingType.CLEAR, color: "auto" },
+             borders: { top: { style: BorderStyle.SINGLE, size: 1, color: "E9ECEF" }, bottom: { style: BorderStyle.SINGLE, size: 1, color: "E9ECEF" }, left: { style: BorderStyle.SINGLE, size: 1, color: "E9ECEF" }, right: { style: BorderStyle.SINGLE, size: 1, color: "E9ECEF" } },
+             margins: { top: 100, bottom: 100, left: 100, right: 100 }
+           })] })],
+           width: { size: 100, type: WidthType.PERCENTAGE },
+        }));
+        blocks.push(new Paragraph({ spacing: { before: 100 } })); 
+        return blocks;
       }
 
-      // Preserve html2canvas-ignore attribute so subsequent logic can still target it
-      if (control.hasAttribute('data-html2canvas-ignore')) {
-        replacementNode.setAttribute('data-html2canvas-ignore', control.getAttribute('data-html2canvas-ignore'));
+      if (['H2', 'H3', 'H4', 'H5'].includes(nodeName)) {
+        blocks.push(new Paragraph({
+          children: parseRuns(node, { size: 36, color: "0B2B3B", bold: true }),
+          alignment: AlignmentType.LEFT,
+          spacing: { before: 240, after: 120 }
+        }));
+        return blocks;
       }
 
-      const parent = control.parentNode;
-      const nextSibling = control.nextSibling;
-      // Remove form control from DOM and replace with text node
-      parent.replaceChild(replacementNode, control);
-      replacements.push({ parent, control, replacementNode, nextSibling });
-    });
+      const isBlock = nodeName === 'P' || nodeName === 'LI' || 
+                      node.classList.contains('clause') || 
+                      node.classList.contains('party-box') || 
+                      node.classList.contains('address-block');
 
-    // Convert Header into proper block Titles to avoid layout and formatting issues in Word
-    const logoHeader = element.querySelector('.logo-header');
-    let originalLogoHeaderHtml = null;
-    if (logoHeader) {
-      originalLogoHeaderHtml = logoHeader.innerHTML;
-      logoHeader.innerHTML = `
-        <div style="font-size: 18pt; font-weight: bold; color: #0b2b3b; text-align: center; text-decoration: none; border: none; margin-bottom: 4pt;">THE NEATIFY TEAM OPC</div>
-        <div style="font-size: 18pt; font-weight: bold; color: #0b2b3b; text-align: center; text-decoration: none; border: none; margin-bottom: 12pt;">SERVICE PARTNER AGREEMENT</div>
-      `;
-    }
+      if (isBlock) {
+        let runs = parseRuns(node, { size: 28, color: "333333" });
+        let bullet = nodeName === 'LI' ? { level: 0 } : undefined;
+        blocks.push(new Paragraph({
+          children: runs,
+          spacing: { after: 120 },
+          bullet: bullet,
+          alignment: (nodeName === 'P' && node.style.textAlign === 'center') ? AlignmentType.CENTER : AlignmentType.LEFT
+        }));
+        return blocks;
+      }
 
-    // Hide interactive elements and those explicitly ignored
-    const noDocxElements = element.querySelectorAll('[data-html2canvas-ignore="true"]');
-    const noDocxDisplayStyles = [];
-    noDocxElements.forEach(el => {
-      noDocxDisplayStyles.push({ el, display: el.style.display });
-      el.style.display = 'none';
-    });
+      if (nodeName === 'TABLE') {
+         const rows = [];
+         node.querySelectorAll('tr').forEach(tr => {
+           const cells = [];
+           tr.querySelectorAll('th, td').forEach(td => {
+             const cellRuns = parseRuns(td, { size: 28, bold: td.nodeName === 'TH', color: "333333" });
+             cells.push(new TableCell({
+               children: [new Paragraph({ children: cellRuns, spacing: { after: 0 } })],
+               shading: td.nodeName === 'TH' ? { fill: "F5F5F5", type: ShadingType.CLEAR, color: "auto" } : undefined,
+               borders: { top: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" }, bottom: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" }, left: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" }, right: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" } },
+               margins: { top: 100, bottom: 100, left: 100, right: 100 }
+             }));
+           });
+           rows.push(new TableRow({ children: cells }));
+         });
+         blocks.push(new Table({ rows, width: { size: 100, type: WidthType.PERCENTAGE } }));
+         blocks.push(new Paragraph({ spacing: { before: 100 } })); 
+         return blocks;
+      }
 
-    // Convert headings to standard divs to completely bypass Word's native heading borders
-    const headingTags = element.querySelectorAll('h2, h3, h4, h5');
-    const headingTagRestorations = [];
-    headingTags.forEach(h => {
-      const replacement = document.createElement('div');
-      replacement.innerHTML = h.innerHTML;
-      replacement.style.cssText = "font-size: 18pt; font-weight: bold; color: #0b2b3b; text-align: left; text-decoration: none; border: none; margin-top: 14pt; margin-bottom: 10pt;";
-      h.parentNode.replaceChild(replacement, h);
-      headingTagRestorations.push({ parent: replacement.parentNode, original: h, replacement });
-    });
+      if (nodeName === 'IMG') {
+        const src = node.getAttribute('src');
+        if (src && src.startsWith('data:image')) {
+          const base64Data = src.split(',')[1];
+          const width = parseInt(node.width || node.getAttribute('width') || 200, 10);
+          const height = parseInt(node.height || node.getAttribute('height') || 100, 10);
+          blocks.push(new Paragraph({
+            children: [
+              new ImageRun({
+                data: Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)),
+                transformation: { width, height }
+              })
+            ],
+            spacing: { after: 120 }
+          }));
+        }
+        return blocks;
+      }
+      
+      if (nodeName === 'TEXTAREA') {
+         blocks.push(new Paragraph({
+            children: [new TextRun({ text: node.value || ' ', size: 28, color: "333333" })],
+            spacing: { after: 120 }
+         }));
+         return blocks;
+      }
+      
+      if (nodeName === 'HR') {
+         blocks.push(new Paragraph({
+           border: { bottom: { color: "CCCCCC", size: 6, space: 1, style: BorderStyle.SINGLE } },
+           spacing: { after: 120 }
+         }));
+         return blocks;
+      }
 
-    // Apply specific inline styles for Sub Headings
-    const styleRestorations = [];
-    
-    // Sub Headings inside text (e.g. 1.1, Partner Details, Company, etc)
-    const subHeadingElements = [
-      ...Array.from(element.querySelectorAll('.clause > strong:first-child')),
-      ...Array.from(element.querySelectorAll('.address-block strong:first-child')),
-      ...Array.from(element.querySelectorAll('.party-box strong:first-child')),
-      ...Array.from(element.querySelectorAll('.info-card p > strong:first-child')),
-      ...Array.from(element.querySelectorAll('p > strong:first-child')).filter(s => s.textContent.trim().toUpperCase().includes('PARTNER ACCEPTANCE'))
-    ].filter(Boolean);
-
-    subHeadingElements.forEach(strong => {
-      styleRestorations.push({ el: strong, style: strong.getAttribute('style') });
-      strong.style.cssText = "font-size: 18pt; font-weight: bold; color: #0b2b3b; text-decoration: none; border: none;";
-    });
+      node.childNodes.forEach(child => {
+         blocks.push(...parseBlocks(child));
+      });
+      return blocks;
+    };
 
     try {
-      const htmlString = `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <title>Service Partner Agreement</title>
-            <style>
-              body { font-family: sans-serif; font-size: 14px; line-height: 1.6; color: #333; }
-              table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
-              th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-              th { background-color: #f5f5f5; font-weight: bold; }
-              .clause { margin-bottom: 0.6rem; text-align: justify; }
-            </style>
-          </head>
-          <body>
-            ${element.innerHTML}
-          </body>
-        </html>
-      `;
-
-      const blob = await asBlob(htmlString, {
-        orientation: 'portrait',
-        margins: { top: 1000, right: 1000, bottom: 1000, left: 1000 }
+      const docChildren = [];
+      element.childNodes.forEach(child => {
+         docChildren.push(...parseBlocks(child));
       });
 
-      saveAs(blob, 'Service_Partner_Agreement.docx');
+      const doc = new Document({
+        sections: [{
+          properties: {},
+          children: docChildren
+        }]
+      });
 
+      const blob = await Packer.toBlob(doc);
+      saveAs(blob, 'Service_Partner_Agreement.docx');
     } catch (error) {
       console.error("Word Generation Error:", error);
       alert("An error occurred while generating the Word document.");
-    } finally {
-      // Restore the DOM completely
-      replacements.forEach(({ parent, control, replacementNode, nextSibling }) => {
-        if (parent.contains(replacementNode)) {
-          parent.replaceChild(control, replacementNode);
-        } else if (parent) {
-          parent.insertBefore(control, nextSibling);
-          if (replacementNode.parentNode) {
-            replacementNode.parentNode.removeChild(replacementNode);
-          }
-        }
-      });
-      headingTagRestorations.forEach(({ parent, original, replacement }) => {
-        if (parent.contains(replacement)) {
-          parent.replaceChild(original, replacement);
-        }
-      });
-      noDocxElements.forEach((el, idx) => {
-        el.style.display = noDocxDisplayStyles[idx].display;
-      });
-      styleRestorations.forEach(({ el, style }) => {
-        if (style === null) {
-          el.removeAttribute('style');
-        } else {
-          el.setAttribute('style', style);
-        }
-      });
-      if (logoHeader && originalLogoHeaderHtml !== null) {
-        logoHeader.innerHTML = originalLogoHeaderHtml;
-      }
     }
   };
 
