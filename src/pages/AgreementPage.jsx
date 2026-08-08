@@ -7,9 +7,11 @@ import { saveAs } from 'file-saver';
 import '../styles/Agreement.css';
 
 export default function AgreementPage() {
-  const sigCanvas = useRef(null);
-  const componentRef = useRef(null);
+  const componentRef = useRef();
+  const sigCanvas = useRef({});
   const [signature, setSignature] = useState("");
+  const [isAccepted, setIsAccepted] = useState(false);
+  const [signatureSaved, setSignatureSaved] = useState(false);
 
   const handleDownloadPdf = async () => {
     const element = componentRef.current;
@@ -489,7 +491,7 @@ export default function AgreementPage() {
         if (node.nodeName === 'INPUT') {
           let text = '';
           if (node.type === 'checkbox' || node.type === 'radio') {
-            text = node.checked ? '[X]' : '[ ]';
+            text = node.checked ? '✓' : '[ ]';
             runs.push({ text, bold: true, italics: format.italics, size: format.size || 11, color: "#333333" });
           } else {
             text = node.value || ' ';
@@ -934,6 +936,7 @@ export default function AgreementPage() {
   const clearSignature = () => {
     sigCanvas.current.clear();
     setSignature("");
+    setSignatureSaved(false);
   };
 
   const saveSignature = () => {
@@ -947,7 +950,20 @@ export default function AgreementPage() {
       .toDataURL("image/png");
 
     setSignature(image);
+    setSignatureSaved(true);
     console.log("Base64 Signature:", image);
+  };
+
+  const validateAndDownload = (downloadFn) => {
+    if (!isAccepted) {
+      alert("Please accept the agreement before continuing.");
+      return;
+    }
+    if (!signatureSaved) {
+      alert("Please draw your signature and click Save Signature before continuing.");
+      return;
+    }
+    downloadFn();
   };
 
   return (
@@ -955,7 +971,7 @@ export default function AgreementPage() {
       <div className="agreement-wrapper" style={{ margin: '0 auto' }} ref={componentRef}>
         {/* header */}
         <div className="logo-header">
-          <span className="logo-placeholder">🧹 THE NEATIFY TEAM <small>OPC</small></span>
+          <span className="logo-placeholder" style={{ background: '#facc15', color: '#000', padding: '4px 8px', borderRadius: '4px', fontWeight: 'bold' }}>THE NEATIFY TEAM <small>OPC</small></span>
           <span style={{ fontWeight: 300, color: '#3a6177', marginLeft: 'auto', fontSize: '0.9rem' }}>SERVICE PARTNER AGREEMENT</span>
         </div>
 
@@ -1370,7 +1386,7 @@ export default function AgreementPage() {
 
           <p><strong>PARTNER ACCEPTANCE</strong><br />
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginTop: '10px' }}>
-              <input type="checkbox" style={{ width: '18px', height: '18px', cursor: 'pointer' }} data-html2canvas-ignore="true" />
+              <input type="checkbox" checked={isAccepted} onChange={(e) => setIsAccepted(e.target.checked)} style={{ width: '18px', height: '18px', cursor: 'pointer' }} data-html2canvas-ignore="true" />
               <span style={{ flex: 1 }}>I confirm that I have understood and accepted the Partner Kit Payment, Machine Adjustment and Installment Terms mentioned in this Annexure–C.</span>
             </label>
           </p>
@@ -1392,8 +1408,8 @@ export default function AgreementPage() {
               />
             </div>
             <div className="signature-buttons" style={{ display: 'flex', gap: 15, marginTop: 20 }} data-html2canvas-ignore="true">
-              <button type="button" onClick={clearSignature} className="btn btn-clear" style={{ padding: '12px 22px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}>Clear</button>
-              <button type="button" onClick={saveSignature} className="btn btn-save" style={{ padding: '12px 22px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}>Save Signature</button>
+              <button type="button" onClick={clearSignature} className="btn btn-clear" style={{ padding: '12px 22px', background: '#eab308', color: '#000', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Clear</button>
+              <button type="button" onClick={saveSignature} className="btn btn-save" style={{ padding: '12px 22px', background: '#eab308', color: '#000', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Save Signature</button>
             </div>
             {signature && (
               <div className="signature-preview-container" style={{ marginTop: '1.5rem' }}>
@@ -1423,22 +1439,16 @@ export default function AgreementPage() {
       <div style={{ textAlign: 'center', marginTop: '2rem', marginBottom: '2rem', display: 'flex', justifyContent: 'center', gap: '1rem' }}>
         <button
           type="button"
-          onClick={generatePdfFromWord}
-          style={{ padding: '14px 28px', background: '#0b2b3b', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: '1.1rem', fontWeight: 600, boxShadow: '0 4px 12px rgba(11, 43, 59, 0.2)' }}
+          onClick={() => validateAndDownload(generatePdfFromWord)}
+          style={{ padding: '14px 28px', background: '#eab308', color: '#000', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: '1.1rem', fontWeight: 600, boxShadow: '0 4px 12px rgba(234, 179, 8, 0.3)' }}
         >
           Download Native PDF
         </button>
+
         <button
           type="button"
-          onClick={handleDownloadPdf}
-          style={{ padding: '14px 28px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: '1.1rem', fontWeight: 600, boxShadow: '0 4px 12px rgba(59, 130, 246, 0.2)' }}
-        >
-          Download Image PDF
-        </button>
-        <button
-          type="button"
-          onClick={handleDownloadWord}
-          style={{ padding: '14px 28px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: '1.1rem', fontWeight: 600, boxShadow: '0 4px 12px rgba(22, 163, 74, 0.2)' }}
+          onClick={() => validateAndDownload(handleDownloadWord)}
+          style={{ padding: '14px 28px', background: '#eab308', color: '#000', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: '1.1rem', fontWeight: 600, boxShadow: '0 4px 12px rgba(234, 179, 8, 0.3)' }}
         >
           Download Word Document
         </button>
