@@ -214,28 +214,28 @@ export default function AgreementPage() {
         }
       } else if (node.nodeType === Node.ELEMENT_NODE) {
         if (node.nodeName === 'BR') {
-           runs.push(new TextRun({ break: 1 }));
+          runs.push(new TextRun({ break: 1 }));
         }
-        
+
         let format = { ...currentFormat };
         if (node.nodeName === 'STRONG' || node.nodeName === 'B') {
           format.bold = true;
           const parent = node.parentNode;
           const isFirstChild = parent && parent.firstElementChild === node;
           const isSubHeading = isFirstChild && (
-            parent.classList.contains('clause') || 
-            parent.classList.contains('address-block') || 
-            parent.classList.contains('party-box') || 
+            parent.classList.contains('clause') ||
+            parent.classList.contains('address-block') ||
+            parent.classList.contains('party-box') ||
             (parent.nodeName === 'P' && parent.parentNode && parent.parentNode.classList.contains('info-card')) ||
             (parent.nodeName === 'P' && node.textContent.trim().toUpperCase().includes('PARTNER ACCEPTANCE'))
           );
           if (isSubHeading) {
-             format.size = 36; // 18pt
-             format.color = "0B2B3B";
+            format.size = 36; // 18pt
+            format.color = "0B2B3B";
           }
         }
         if (node.nodeName === 'EM' || node.nodeName === 'I') format.italics = true;
-        
+
         if (node.nodeName === 'INPUT') {
           let text = '';
           if (node.type === 'checkbox' || node.type === 'radio') {
@@ -249,9 +249,9 @@ export default function AgreementPage() {
           const text = selectedOption ? selectedOption.text : ' ';
           runs.push(new TextRun({ text, bold: format.bold, size: format.size, color: format.color }));
         } else {
-           node.childNodes.forEach(child => {
-             runs.push(...parseRuns(child, format));
-           });
+          node.childNodes.forEach(child => {
+            runs.push(...parseRuns(child, format));
+          });
         }
       }
       return runs;
@@ -260,7 +260,7 @@ export default function AgreementPage() {
     const parseBlocks = (node) => {
       let blocks = [];
       if (node.nodeType !== Node.ELEMENT_NODE) return blocks;
-      
+
       if (node.getAttribute('data-html2canvas-ignore') === 'true') return blocks;
       const style = window.getComputedStyle(node);
       if (style.display === 'none') return blocks;
@@ -280,33 +280,35 @@ export default function AgreementPage() {
         }));
         return blocks;
       }
-      
+
       if (node.classList.contains('signature-grid')) {
-         const cells = [];
-         node.querySelectorAll('.signature-box').forEach(box => {
-           cells.push(new TableCell({
-             children: parseBlocks(box),
-             borders: { top: { style: BorderStyle.NIL, size: 0, color: "auto" }, bottom: { style: BorderStyle.NIL, size: 0, color: "auto" }, left: { style: BorderStyle.NIL, size: 0, color: "auto" }, right: { style: BorderStyle.NIL, size: 0, color: "auto" } },
-             width: { size: 50, type: WidthType.PERCENTAGE }
-           }));
-         });
-         blocks.push(new Table({ rows: [new TableRow({ children: cells })], width: { size: 100, type: WidthType.PERCENTAGE } }));
-         return blocks;
+        const cells = [];
+        node.querySelectorAll('.signature-box').forEach(box => {
+          cells.push(new TableCell({
+            children: parseBlocks(box),
+            borders: { top: { style: BorderStyle.NIL, size: 0, color: "auto" }, bottom: { style: BorderStyle.NIL, size: 0, color: "auto" }, left: { style: BorderStyle.NIL, size: 0, color: "auto" }, right: { style: BorderStyle.NIL, size: 0, color: "auto" } },
+            width: { size: 50, type: WidthType.PERCENTAGE }
+          }));
+        });
+        blocks.push(new Table({ rows: [new TableRow({ children: cells })], width: { size: 100, type: WidthType.PERCENTAGE } }));
+        return blocks;
       }
-      
+
       if (node.classList.contains('info-card')) {
         const infoBlocks = [];
         node.childNodes.forEach(child => infoBlocks.push(...parseBlocks(child)));
         blocks.push(new Table({
-           rows: [new TableRow({ children: [new TableCell({
-             children: infoBlocks,
-             shading: { fill: "F8F9FA", type: ShadingType.CLEAR, color: "auto" },
-             borders: { top: { style: BorderStyle.SINGLE, size: 1, color: "E9ECEF" }, bottom: { style: BorderStyle.SINGLE, size: 1, color: "E9ECEF" }, left: { style: BorderStyle.SINGLE, size: 1, color: "E9ECEF" }, right: { style: BorderStyle.SINGLE, size: 1, color: "E9ECEF" } },
-             margins: { top: 100, bottom: 100, left: 100, right: 100 }
-           })] })],
-           width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: [new TableRow({
+            children: [new TableCell({
+              children: infoBlocks,
+              shading: { fill: "F8F9FA", type: ShadingType.CLEAR, color: "auto" },
+              borders: { top: { style: BorderStyle.SINGLE, size: 1, color: "E9ECEF" }, bottom: { style: BorderStyle.SINGLE, size: 1, color: "E9ECEF" }, left: { style: BorderStyle.SINGLE, size: 1, color: "E9ECEF" }, right: { style: BorderStyle.SINGLE, size: 1, color: "E9ECEF" } },
+              margins: { top: 100, bottom: 100, left: 100, right: 100 }
+            })]
+          })],
+          width: { size: 100, type: WidthType.PERCENTAGE },
         }));
-        blocks.push(new Paragraph({ spacing: { before: 100 } })); 
+        blocks.push(new Paragraph({ spacing: { before: 100 } }));
         return blocks;
       }
 
@@ -319,10 +321,10 @@ export default function AgreementPage() {
         return blocks;
       }
 
-      const isBlock = nodeName === 'P' || nodeName === 'LI' || 
-                      node.classList.contains('clause') || 
-                      node.classList.contains('party-box') || 
-                      node.classList.contains('address-block');
+      const isBlock = nodeName === 'P' || nodeName === 'LI' ||
+        node.classList.contains('clause') ||
+        node.classList.contains('party-box') ||
+        node.classList.contains('address-block');
 
       if (isBlock) {
         let runs = parseRuns(node, { size: 28, color: "333333" });
@@ -337,23 +339,23 @@ export default function AgreementPage() {
       }
 
       if (nodeName === 'TABLE') {
-         const rows = [];
-         node.querySelectorAll('tr').forEach(tr => {
-           const cells = [];
-           tr.querySelectorAll('th, td').forEach(td => {
-             const cellRuns = parseRuns(td, { size: 28, bold: td.nodeName === 'TH', color: "333333" });
-             cells.push(new TableCell({
-               children: [new Paragraph({ children: cellRuns, spacing: { after: 0 } })],
-               shading: td.nodeName === 'TH' ? { fill: "F5F5F5", type: ShadingType.CLEAR, color: "auto" } : undefined,
-               borders: { top: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" }, bottom: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" }, left: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" }, right: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" } },
-               margins: { top: 100, bottom: 100, left: 100, right: 100 }
-             }));
-           });
-           rows.push(new TableRow({ children: cells }));
-         });
-         blocks.push(new Table({ rows, width: { size: 100, type: WidthType.PERCENTAGE } }));
-         blocks.push(new Paragraph({ spacing: { before: 100 } })); 
-         return blocks;
+        const rows = [];
+        node.querySelectorAll('tr').forEach(tr => {
+          const cells = [];
+          tr.querySelectorAll('th, td').forEach(td => {
+            const cellRuns = parseRuns(td, { size: 28, bold: td.nodeName === 'TH', color: "333333" });
+            cells.push(new TableCell({
+              children: [new Paragraph({ children: cellRuns, spacing: { after: 0 } })],
+              shading: td.nodeName === 'TH' ? { fill: "F5F5F5", type: ShadingType.CLEAR, color: "auto" } : undefined,
+              borders: { top: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" }, bottom: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" }, left: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" }, right: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" } },
+              margins: { top: 100, bottom: 100, left: 100, right: 100 }
+            }));
+          });
+          rows.push(new TableRow({ children: cells }));
+        });
+        blocks.push(new Table({ rows, width: { size: 100, type: WidthType.PERCENTAGE } }));
+        blocks.push(new Paragraph({ spacing: { before: 100 } }));
+        return blocks;
       }
 
       if (nodeName === 'IMG') {
@@ -374,25 +376,25 @@ export default function AgreementPage() {
         }
         return blocks;
       }
-      
+
       if (nodeName === 'TEXTAREA') {
-         blocks.push(new Paragraph({
-            children: [new TextRun({ text: node.value || ' ', size: 28, color: "333333" })],
-            spacing: { after: 120 }
-         }));
-         return blocks;
+        blocks.push(new Paragraph({
+          children: [new TextRun({ text: node.value || ' ', size: 28, color: "333333" })],
+          spacing: { after: 120 }
+        }));
+        return blocks;
       }
-      
+
       if (nodeName === 'HR') {
-         blocks.push(new Paragraph({
-           border: { bottom: { color: "CCCCCC", size: 6, space: 1, style: BorderStyle.SINGLE } },
-           spacing: { after: 120 }
-         }));
-         return blocks;
+        blocks.push(new Paragraph({
+          border: { bottom: { color: "CCCCCC", size: 6, space: 1, style: BorderStyle.SINGLE } },
+          spacing: { after: 120 }
+        }));
+        return blocks;
       }
 
       node.childNodes.forEach(child => {
-         blocks.push(...parseBlocks(child));
+        blocks.push(...parseBlocks(child));
       });
       return blocks;
     };
@@ -400,7 +402,7 @@ export default function AgreementPage() {
     try {
       const docChildren = [];
       element.childNodes.forEach(child => {
-         docChildren.push(...parseBlocks(child));
+        docChildren.push(...parseBlocks(child));
       });
 
       const doc = new Document({
@@ -426,22 +428,32 @@ export default function AgreementPage() {
     const pdf = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'portrait' });
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-    const margin = 50; 
+    const margin = 50;
     const contentWidth = pageWidth - margin * 2;
-    let cursorY = margin;
 
-    const addPage = () => {
-      pdf.addPage();
-      cursorY = margin;
-    };
-
-    const checkPageBreak = (neededHeight) => {
-      if (cursorY + neededHeight > pageHeight - margin) {
-        addPage();
-        return true;
+    class PdfRenderer {
+      constructor(pdfInstance, isSimulate = false) {
+        this.pdf = pdfInstance;
+        this.isSimulate = isSimulate;
+        this.cursorY = margin;
+        this.pageHeight = pageHeight;
+        this.margin = margin;
+        this.contentWidth = contentWidth;
       }
-      return false;
-    };
+      addPage() {
+        if (!this.isSimulate) this.pdf.addPage();
+        this.cursorY = this.margin;
+      }
+      checkPageBreak(neededHeight) {
+        if (this.cursorY + neededHeight > this.pageHeight - this.margin) {
+          this.addPage();
+          return true;
+        }
+        return false;
+      }
+    }
+
+    const mainRenderer = new PdfRenderer(pdf, false);
 
     const parseRunsForPdf = (node, currentFormat = {}) => {
       let runs = [];
@@ -452,287 +464,465 @@ export default function AgreementPage() {
         }
       } else if (node.nodeType === Node.ELEMENT_NODE) {
         if (node.nodeName === 'BR') {
-           runs.push({ break: true });
+          runs.push({ break: true });
         }
-        
+
         let format = { ...currentFormat };
         if (node.nodeName === 'STRONG' || node.nodeName === 'B') {
           format.bold = true;
           const parent = node.parentNode;
           const isFirstChild = parent && parent.firstElementChild === node;
           const isSubHeading = isFirstChild && (
-            parent.classList.contains('clause') || 
-            parent.classList.contains('address-block') || 
-            parent.classList.contains('party-box') || 
+            parent.classList.contains('clause') ||
+            parent.classList.contains('address-block') ||
+            parent.classList.contains('party-box') ||
             (parent.nodeName === 'P' && parent.parentNode && parent.parentNode.classList.contains('info-card')) ||
             (parent.nodeName === 'P' && node.textContent.trim().toUpperCase().includes('PARTNER ACCEPTANCE'))
           );
           if (isSubHeading) {
-             format.size = 14; 
-             format.color = "#0B2B3B";
+            format.size = 14;
+            format.color = "#0B2B3B";
           }
         }
         if (node.nodeName === 'EM' || node.nodeName === 'I') format.italics = true;
-        
+
         if (node.nodeName === 'INPUT') {
           let text = '';
           if (node.type === 'checkbox' || node.type === 'radio') {
             text = node.checked ? '[X]' : '[ ]';
+            runs.push({ text, bold: true, italics: format.italics, size: format.size || 11, color: "#333333" });
           } else {
             text = node.value || ' ';
-            if (node.value) { format.bold = true; }
+            runs.push({ text, isInput: true, bold: true, italics: format.italics, size: format.size || 11, color: "#1b3f51" });
           }
-          runs.push({ text, bold: format.bold, italics: format.italics, size: format.size || 11, color: format.color || "#333333" });
         } else if (node.nodeName === 'SELECT') {
           const selectedOption = node.options[node.selectedIndex];
           const text = selectedOption ? selectedOption.text : ' ';
-          runs.push({ text, bold: format.bold, italics: format.italics, size: format.size || 11, color: format.color || "#333333" });
+          runs.push({ text, isInput: true, bold: true, italics: format.italics, size: format.size || 11, color: "#1b3f51" });
         } else {
-           node.childNodes.forEach(child => {
-             runs.push(...parseRunsForPdf(child, format));
-           });
+          node.childNodes.forEach(child => {
+            runs.push(...parseRunsForPdf(child, format));
+          });
         }
       }
       return runs;
     };
 
-    const renderParagraph = (runs, align = 'left', bullet = false, extraIndent = 0) => {
+    const renderParagraph = (runs, align = 'left', bullet = false, extraIndent = 0, renderer) => {
       let currentX = margin + extraIndent;
       if (bullet) {
-         pdf.setFont('helvetica', 'normal');
-         pdf.setFontSize(11);
-         pdf.setTextColor('#333333');
-         pdf.text('•', currentX, cursorY + 11);
-         currentX += 15;
+        if (!renderer.isSimulate) {
+          renderer.pdf.setFont('helvetica', 'normal');
+          renderer.pdf.setFontSize(11);
+          renderer.pdf.setTextColor('#333333');
+          renderer.pdf.text('•', currentX, renderer.cursorY + 11);
+        }
+        currentX += 15;
       }
 
       let lineMaxHeight = 11;
       let words = [];
-      
+
       for (const run of runs) {
-          if (run.break) {
-             words.push({ break: true });
-             continue;
-          }
+        if (run.break) {
+          words.push({ break: true });
+          continue;
+        }
+        if (run.isInput) {
+          words.push(run);
+        } else {
           const runWords = run.text.split(/(\s+)/);
           for (const w of runWords) {
-              if (w.length > 0) {
-                 words.push({ text: w, bold: run.bold, italics: run.italics, size: run.size, color: run.color });
-              }
+            if (w.length > 0) {
+              words.push({ text: w, bold: run.bold, italics: run.italics, size: run.size, color: run.color });
+            }
           }
+        }
       }
 
       let lineWords = [];
       let currentLineWidth = 0;
 
       const flushLine = (forceBreak = false) => {
-          if (lineWords.length === 0 && !forceBreak) return;
-          checkPageBreak(lineMaxHeight * 1.5);
-          
-          let x = currentX;
-          if (align === 'center') {
-              x = margin + extraIndent + (contentWidth - extraIndent - currentLineWidth) / 2;
-          } else if (align === 'right') {
-              x = margin + contentWidth - currentLineWidth;
+        if (lineWords.length === 0 && !forceBreak) return;
+        renderer.checkPageBreak(lineMaxHeight * 1.5);
+
+        let x = currentX;
+        if (align === 'center') {
+          x = margin + extraIndent + (contentWidth - extraIndent - currentLineWidth) / 2;
+        } else if (align === 'right') {
+          x = margin + contentWidth - currentLineWidth;
+        }
+
+        for (const lw of lineWords) {
+          if (lw.isInput) {
+            let availableWidth = (margin + contentWidth) - x;
+            if (availableWidth < 40) availableWidth = contentWidth - extraIndent;
+            
+            const p = renderer.pdf || new jsPDF({ unit: 'pt', format: 'a4' });
+            p.setFont('helvetica', lw.bold ? (lw.italics ? 'bolditalic' : 'bold') : (lw.italics ? 'italic' : 'normal'));
+            p.setFontSize(lw.size);
+            let textWidth = p.getTextWidth(lw.text);
+            let boxWidth = Math.max(140, textWidth + 10);
+            if (boxWidth > availableWidth) boxWidth = availableWidth;
+
+            let wrapped = p.splitTextToSize(lw.text, boxWidth - 8);
+            let boxHeight = Math.max(22, wrapped.length * 15 + 8);
+
+            if (!renderer.isSimulate) {
+              renderer.pdf.setDrawColor(160, 188, 205);
+              renderer.pdf.setLineDashPattern([2, 2], 0);
+              renderer.pdf.rect(x, renderer.cursorY + (lineMaxHeight - boxHeight) / 2 + 2, boxWidth, boxHeight, 'S');
+              renderer.pdf.setLineDashPattern([], 0);
+              
+              renderer.pdf.setTextColor(lw.color);
+              let textY = renderer.cursorY + (lineMaxHeight - boxHeight) / 2 + 2 + (boxHeight - (wrapped.length * lw.size)) / 2 + lw.size - 2;
+              renderer.pdf.text(wrapped, x + 4, textY);
+            }
+            x += boxWidth + 5;
+          } else {
+            if (!renderer.isSimulate) {
+              renderer.pdf.setFont('helvetica', lw.bold ? (lw.italics ? 'bolditalic' : 'bold') : (lw.italics ? 'italic' : 'normal'));
+              renderer.pdf.setFontSize(lw.size);
+              renderer.pdf.setTextColor(lw.color);
+              renderer.pdf.text(lw.text, x, renderer.cursorY + lineMaxHeight);
+            }
+            x += (renderer.pdf || new jsPDF({ unit: 'pt' })).getTextWidth(lw.text);
           }
-          
-          for (const lw of lineWords) {
-              pdf.setFont('helvetica', lw.bold ? (lw.italics ? 'bolditalic' : 'bold') : (lw.italics ? 'italic' : 'normal'));
-              pdf.setFontSize(lw.size);
-              pdf.setTextColor(lw.color);
-              pdf.text(lw.text, x, cursorY + lineMaxHeight);
-              x += pdf.getTextWidth(lw.text);
-          }
-          
-          cursorY += lineMaxHeight * 1.5; 
-          lineWords = [];
-          currentLineWidth = 0;
-          lineMaxHeight = 11;
-          currentX = bullet ? margin + extraIndent + 15 : margin + extraIndent;
+        }
+
+        renderer.cursorY += lineMaxHeight * 1.5;
+        lineWords = [];
+        currentLineWidth = 0;
+        lineMaxHeight = 11;
+        currentX = bullet ? margin + extraIndent + 15 : margin + extraIndent;
       };
 
       for (const word of words) {
-          if (word.break) {
-              flushLine(true);
-              continue;
+        if (word.break) {
+          flushLine(true);
+          continue;
+        }
+        
+        let wWidth = 0;
+        let wHeight = word.size;
+        
+        const p = renderer.pdf || new jsPDF({ unit: 'pt', format: 'a4' });
+        p.setFont('helvetica', word.bold ? (word.italics ? 'bolditalic' : 'bold') : (word.italics ? 'italic' : 'normal'));
+        p.setFontSize(word.size);
+
+        if (word.isInput) {
+          let textWidth = p.getTextWidth(word.text);
+          let boxWidth = Math.max(140, textWidth + 10);
+          let availableWidth = (margin + contentWidth) - (currentX + currentLineWidth);
+          if (boxWidth > availableWidth && currentLineWidth > 0) {
+            flushLine();
+            availableWidth = contentWidth - extraIndent;
           }
-          pdf.setFont('helvetica', word.bold ? (word.italics ? 'bolditalic' : 'bold') : (word.italics ? 'italic' : 'normal'));
-          pdf.setFontSize(word.size);
-          const wWidth = pdf.getTextWidth(word.text);
-          const wHeight = word.size;
+          if (boxWidth > availableWidth) boxWidth = availableWidth;
           
-          if (currentX + currentLineWidth + wWidth > margin + contentWidth) {
-              if (word.text.trim() === '') continue; 
-              flushLine();
-          }
-          
-          lineWords.push(word);
-          currentLineWidth += wWidth;
-          if (wHeight > lineMaxHeight) lineMaxHeight = wHeight;
+          let wrapped = p.splitTextToSize(word.text, boxWidth - 8);
+          wHeight = Math.max(22, wrapped.length * 15 + 8);
+          wWidth = boxWidth + 5;
+        } else {
+          wWidth = p.getTextWidth(word.text);
+        }
+
+        if (currentX + currentLineWidth + wWidth > margin + contentWidth) {
+          if (!word.isInput && word.text.trim() === '') continue;
+          flushLine();
+        }
+
+        lineWords.push(word);
+        currentLineWidth += wWidth;
+        if (wHeight > lineMaxHeight) lineMaxHeight = wHeight;
       }
       flushLine();
-      cursorY += 5; 
+      renderer.cursorY += 5;
     };
 
-    const parseBlocksForPdf = (node) => {
+    const measureBlock = (node, extraIndent = 0) => {
+      const simulator = new PdfRenderer(pdf, true);
+      simulator.cursorY = 0;
+      simulator.pageHeight = 9999999; // Prevent page breaks during measurement
+      parseBlocksForPdf(node, simulator, { extraIndent });
+      return simulator.cursorY;
+    };
+
+    const parseBlocksForPdf = (node, renderer, options = {}) => {
       if (node.nodeType !== Node.ELEMENT_NODE) return;
-      if (node.getAttribute('data-html2canvas-ignore') === 'true') return;
+      if (node.getAttribute('data-html2canvas-ignore') === 'true' && !node.classList.contains('signature-box') && !node.classList.contains('signature-buttons')) return;
       const style = window.getComputedStyle(node);
       if (style.display === 'none') return;
 
       const nodeName = node.nodeName;
 
       if (node.classList.contains('logo-header')) {
-        renderParagraph([{ text: "THE NEATIFY TEAM OPC", bold: true, size: 20, color: "#0B2B3B" }], 'center');
-        renderParagraph([{ text: "SERVICE PARTNER AGREEMENT", bold: true, size: 14, color: "#3a6177" }], 'center');
-        cursorY += 20;
+        renderParagraph([{ text: "THE NEATIFY TEAM OPC", bold: true, size: 20, color: "#0B2B3B" }], 'center', false, 0, renderer);
+        renderParagraph([{ text: "SERVICE PARTNER AGREEMENT", bold: true, size: 14, color: "#3a6177" }], 'center', false, 0, renderer);
+        renderer.cursorY += 20;
         return;
       }
 
       if (node.classList.contains('signature-grid')) {
-         node.querySelectorAll('.signature-box').forEach(box => {
-            parseBlocksForPdf(box);
-         });
-         return;
+        node.querySelectorAll('.signature-box').forEach(box => {
+          parseBlocksForPdf(box, renderer);
+        });
+        return;
       }
 
       if (node.classList.contains('info-card')) {
-        cursorY += 10;
-        checkPageBreak(80); 
-        
-        const startY = cursorY;
-        pdf.setFillColor(248, 249, 250);
-        pdf.setDrawColor(233, 236, 239);
-        
-        // Estimate height and draw a generic box (since we can't easily measure full height in advance)
-        // Alternatively, we can just draw a line on the left to denote a card. 
-        // For full fidelity, we'll draw a rect over a rough estimated height (80pt).
-        pdf.rect(margin, cursorY, contentWidth, 90, 'FD');
-        cursorY += 15;
-        node.childNodes.forEach(child => {
+        if (renderer.isSimulate) {
+          renderer.cursorY += 10;
+          node.childNodes.forEach(child => {
             if (child.nodeName === 'P') {
-                 const runs = parseRunsForPdf(child, { size: 11, color: "#333333" });
-                 renderParagraph(runs, 'left', false, 15);
+              const runs = parseRunsForPdf(child, { size: 11, color: "#333333" });
+              renderParagraph(runs, 'left', false, 15, renderer);
+            } else {
+              parseBlocksForPdf(child, renderer, { extraIndent: 15 });
             }
+          });
+          renderer.cursorY += 25; // bottom padding
+          return;
+        }
+
+        renderer.cursorY += 10;
+        
+        const tempSim = new PdfRenderer(pdf, true);
+        tempSim.cursorY = 0;
+        tempSim.pageHeight = 9999999;
+        node.childNodes.forEach(child => {
+          if (child.nodeName === 'P') {
+            const runs = parseRunsForPdf(child, { size: 11, color: "#333333" });
+            renderParagraph(runs, 'left', false, 15, tempSim);
+          } else {
+            parseBlocksForPdf(child, tempSim, { extraIndent: 15 });
+          }
         });
-        cursorY = startY + 100; // Force step out of box
+        const totalHeight = tempSim.cursorY + 20; // top + bottom padding
+        
+        renderer.checkPageBreak(totalHeight + 10);
+
+        const startY = renderer.cursorY;
+        renderer.pdf.setFillColor(248, 249, 250);
+        renderer.pdf.setDrawColor(233, 236, 239);
+        renderer.pdf.rect(margin, startY, contentWidth, totalHeight, 'FD');
+        renderer.cursorY += 10;
+        node.childNodes.forEach(child => {
+          if (child.nodeName === 'P') {
+            const runs = parseRunsForPdf(child, { size: 11, color: "#333333" });
+            renderParagraph(runs, 'left', false, 15, renderer);
+          } else {
+            parseBlocksForPdf(child, renderer, { extraIndent: 15 });
+          }
+        });
+        renderer.cursorY = startY + totalHeight + 15;
         return;
       }
 
       if (['H2', 'H3', 'H4', 'H5'].includes(nodeName)) {
-        cursorY += 15;
-        checkPageBreak(30);
+        let neededHeight = 30;
+        if (!renderer.isSimulate) {
+          let nextSibling = node.nextElementSibling;
+          if (nextSibling && (nextSibling.nodeName === 'TABLE' || nextSibling.classList.contains('table-wrap') || nextSibling.classList.contains('info-card') || nextSibling.nodeName === 'P' || nextSibling.nodeName === 'DIV')) {
+             const siblingHeight = measureBlock(nextSibling);
+             neededHeight = 30 + Math.min(siblingHeight, 80);
+          }
+        }
+        
+        renderer.cursorY += 15;
+        renderer.checkPageBreak(neededHeight);
         const runs = parseRunsForPdf(node, { size: 14, color: "#0B2B3B", bold: true });
-        renderParagraph(runs, 'left');
-        cursorY += 5;
+        renderParagraph(runs, 'left', false, 0, renderer);
+        renderer.cursorY += 5;
         return;
       }
 
-      const isBlock = nodeName === 'P' || nodeName === 'LI' || 
-                      node.classList.contains('clause') || 
-                      node.classList.contains('party-box') || 
-                      node.classList.contains('address-block');
+      const isBlock = nodeName === 'P' || nodeName === 'LI' ||
+        node.classList.contains('clause') ||
+        node.classList.contains('party-box') ||
+        node.classList.contains('address-block');
 
       if (isBlock) {
         const runs = parseRunsForPdf(node, { size: 11, color: "#333333" });
         const bullet = nodeName === 'LI';
         const align = (nodeName === 'P' && node.style.textAlign === 'center') ? 'center' : (node.style.textAlign === 'right' ? 'right' : 'left');
-        renderParagraph(runs, align, bullet);
+        renderParagraph(runs, align, bullet, options.extraIndent || 0, renderer);
         return;
       }
 
-      if (nodeName === 'TABLE') {
-         cursorY += 10;
-         const rows = Array.from(node.querySelectorAll('tr'));
-         const cols = rows[0] ? Array.from(rows[0].querySelectorAll('th, td')).length : 1;
-         const colWidth = contentWidth / cols;
-         
-         for (const tr of rows) {
-             const cells = Array.from(tr.querySelectorAll('th, td'));
-             let maxCellHeight = 0;
-             
-             // Pre-measure height
-             for (const td of cells) {
-                  const runs = parseRunsForPdf(td, { size: 10, bold: td.nodeName === 'TH', color: "#333333" });
-                  let textLen = runs.map(r => r.text).join('').length;
-                  let charsPerLine = Math.floor(colWidth / 6);
-                  let lines = Math.ceil(textLen / (charsPerLine || 1));
-                  if (lines < 1) lines = 1;
-                  let h = lines * 15 + 10;
-                  if (h > maxCellHeight) maxCellHeight = h;
+      if (nodeName === 'TABLE' || node.classList.contains('table-wrap')) {
+        const tableNode = nodeName === 'TABLE' ? node : node.querySelector('table');
+        if (!tableNode) {
+          node.childNodes.forEach(child => parseBlocksForPdf(child, renderer, options));
+          return;
+        }
+
+        renderer.cursorY += 10;
+        const rows = Array.from(tableNode.querySelectorAll('tr'));
+        const cols = rows[0] ? Array.from(rows[0].querySelectorAll('th, td')).length : 1;
+        const colWidth = contentWidth / cols;
+        
+        let headerRow = null;
+        let headerMaxHeight = 0;
+
+        const drawRow = (tr, rowHeight, isThRow) => {
+          const cells = Array.from(tr.querySelectorAll('th, td'));
+          let currentX = margin;
+          for (let i = 0; i < cells.length; i++) {
+            const td = cells[i];
+            if (!renderer.isSimulate) {
+              if (isThRow) {
+                renderer.pdf.setFillColor(245, 245, 245);
+                renderer.pdf.rect(currentX, renderer.cursorY, colWidth, rowHeight, 'F');
+              }
+              renderer.pdf.setDrawColor(204, 204, 204);
+              renderer.pdf.rect(currentX, renderer.cursorY, colWidth, rowHeight, 'S');
+            }
+
+            const runs = parseRunsForPdf(td, { size: 10, bold: isThRow, color: "#333333" });
+            if (!renderer.isSimulate) {
+              let textX = currentX + 5;
+              let textY = renderer.cursorY + 5;
+              renderer.pdf.setFont('helvetica', isThRow ? 'bold' : 'normal');
+              renderer.pdf.setFontSize(10);
+              renderer.pdf.setTextColor('#333333');
+
+              const text = runs.map(r => r.text).join('');
+              const wrapped = renderer.pdf.splitTextToSize(text, colWidth - 10);
+              renderer.pdf.text(wrapped, textX, textY + 10);
+            }
+            currentX += colWidth;
+          }
+          renderer.cursorY += rowHeight;
+        };
+
+        for (let rIdx = 0; rIdx < rows.length; rIdx++) {
+          const tr = rows[rIdx];
+          const cells = Array.from(tr.querySelectorAll('th, td'));
+          const isThRow = cells.every(td => td.nodeName === 'TH');
+          
+          let maxCellHeight = 0;
+          for (const td of cells) {
+            const runs = parseRunsForPdf(td, { size: 10, bold: isThRow, color: "#333333" });
+            const text = runs.map(r => r.text).join('');
+            const p = renderer.pdf || new jsPDF({ unit: 'pt', format: 'a4' });
+            const wrapped = p.splitTextToSize(text, colWidth - 10);
+            let h = wrapped.length * 12 + 10;
+            if (h > maxCellHeight) maxCellHeight = h;
+          }
+
+          if (isThRow && rIdx === 0) {
+            headerRow = tr;
+            headerMaxHeight = maxCellHeight;
+          }
+
+          if (rIdx === 0 && rows.length > 1) {
+             let nextCells = Array.from(rows[1].querySelectorAll('th, td'));
+             let nextMax = 0;
+             for (const td of nextCells) {
+               const runs = parseRunsForPdf(td, { size: 10, bold: false });
+               const text = runs.map(r => r.text).join('');
+               const p = renderer.pdf || new jsPDF({ unit: 'pt', format: 'a4' });
+               const wrapped = p.splitTextToSize(text, colWidth - 10);
+               let h = wrapped.length * 12 + 10;
+               if (h > nextMax) nextMax = h;
              }
-             
-             checkPageBreak(maxCellHeight);
-             
-             let currentX = margin;
-             for (let i = 0; i < cells.length; i++) {
-                 const td = cells[i];
-                 const isTh = td.nodeName === 'TH';
-                 
-                 if (isTh) {
-                    pdf.setFillColor(245, 245, 245);
-                    pdf.rect(currentX, cursorY, colWidth, maxCellHeight, 'F');
-                 }
-                 pdf.setDrawColor(204, 204, 204);
-                 pdf.rect(currentX, cursorY, colWidth, maxCellHeight, 'S');
-                 
-                 const runs = parseRunsForPdf(td, { size: 10, bold: isTh, color: "#333333" });
-                 let textX = currentX + 5;
-                 let textY = cursorY + 5;
-                 
-                 pdf.setFont('helvetica', isTh ? 'bold' : 'normal');
-                 pdf.setFontSize(10);
-                 pdf.setTextColor('#333333');
-                 
-                 const text = runs.map(r => r.text).join('');
-                 const wrapped = pdf.splitTextToSize(text, colWidth - 10);
-                 pdf.text(wrapped, textX, textY + 10);
-                 
-                 currentX += colWidth;
+             renderer.checkPageBreak(maxCellHeight + nextMax);
+             drawRow(tr, maxCellHeight, isThRow);
+          } else {
+             let didBreak = renderer.checkPageBreak(maxCellHeight);
+             if (didBreak && headerRow && rIdx > 0 && !isThRow) {
+               drawRow(headerRow, headerMaxHeight, true);
              }
-             cursorY += maxCellHeight;
-         }
-         cursorY += 15;
-         return;
+             drawRow(tr, maxCellHeight, isThRow);
+          }
+        }
+        renderer.cursorY += 15;
+        return;
+      }
+
+      if (node.classList.contains('signature-module')) {
+        const img = node.querySelector('.signature-preview');
+        renderer.checkPageBreak(150);
+        if (!renderer.isSimulate) {
+          renderer.pdf.setFont('helvetica', 'bold');
+          renderer.pdf.setFontSize(14);
+          renderer.pdf.setTextColor('#0B2B3B');
+          renderer.pdf.text("Partner Signature / Digital Acceptance", margin, renderer.cursorY + 15);
+          renderer.cursorY += 25;
+          
+          renderer.pdf.setDrawColor(153, 153, 153);
+          renderer.pdf.setLineDashPattern([4, 4], 0);
+          renderer.pdf.rect(margin, renderer.cursorY, 300, 100, 'S');
+          renderer.pdf.setLineDashPattern([], 0);
+          
+          if (img) {
+            const src = img.getAttribute('src');
+            if (src && src.startsWith('data:image')) {
+              const origW = img.naturalWidth || 400;
+              const origH = img.naturalHeight || 150;
+              const scale = Math.min(280 / origW, 80 / origH);
+              const drawW = origW * scale;
+              const drawH = origH * scale;
+              const xPos = margin + (300 - drawW) / 2;
+              const yPos = renderer.cursorY + (100 - drawH) / 2;
+              renderer.pdf.addImage(src, 'PNG', xPos, yPos, drawW, drawH);
+            }
+          } else {
+            renderer.pdf.setFont('helvetica', 'italic');
+            renderer.pdf.setFontSize(11);
+            renderer.pdf.setTextColor('#999999');
+            renderer.pdf.text("(No signature provided)", margin + 80, renderer.cursorY + 55);
+          }
+          renderer.cursorY += 115;
+        } else {
+          renderer.cursorY += 140;
+        }
+        return;
       }
 
       if (nodeName === 'IMG') {
         const src = node.getAttribute('src');
-        if (src && src.startsWith('data:image')) {
+        if (src && src.startsWith('data:image') && !node.classList.contains('signature-preview')) {
           const width = parseInt(node.width || node.getAttribute('width') || 200, 10);
           const height = parseInt(node.height || node.getAttribute('height') || 100, 10);
-          checkPageBreak(height + 20);
-          try {
-             pdf.addImage(src, 'PNG', margin, cursorY, width, height);
-             cursorY += height + 15;
-          } catch(e) { console.error("Error drawing image in pdf", e); }
+          renderer.checkPageBreak(height + 20);
+          if (!renderer.isSimulate) {
+            try {
+              renderer.pdf.addImage(src, 'PNG', margin, renderer.cursorY, width, height);
+            } catch (e) { console.error("Error drawing image in pdf", e); }
+          }
+          renderer.cursorY += height + 15;
         }
         return;
       }
-      
+
       if (nodeName === 'TEXTAREA') {
-         renderParagraph([{ text: node.value || ' ', size: 11, color: "#333333" }]);
-         return;
+        renderParagraph([{ text: node.value || ' ', size: 11, color: "#333333" }], 'left', false, 0, renderer);
+        return;
       }
-      
+
       if (nodeName === 'HR') {
-         cursorY += 10;
-         checkPageBreak(10);
-         pdf.setDrawColor(204, 204, 204);
-         pdf.setLineWidth(1);
-         pdf.line(margin, cursorY, margin + contentWidth, cursorY);
-         cursorY += 15;
-         return;
+        renderer.cursorY += 10;
+        renderer.checkPageBreak(10);
+        if (!renderer.isSimulate) {
+          renderer.pdf.setDrawColor(204, 204, 204);
+          renderer.pdf.setLineWidth(1);
+          renderer.pdf.line(margin, renderer.cursorY, margin + contentWidth, renderer.cursorY);
+        }
+        renderer.cursorY += 15;
+        return;
       }
 
       node.childNodes.forEach(child => {
-         parseBlocksForPdf(child);
+        parseBlocksForPdf(child, renderer, options);
       });
     };
 
     try {
       element.childNodes.forEach(child => {
-         parseBlocksForPdf(child);
+        parseBlocksForPdf(child, mainRenderer);
       });
       pdf.save('Service_Partner_Agreement.pdf');
     } catch (error) {
